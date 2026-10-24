@@ -32,3 +32,6 @@ replay_pid*
 crash.log
 .aws-sam/
 **/__pycache__/
+
+# CMP file
+opencode.json
