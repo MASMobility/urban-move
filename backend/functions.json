@@ -1,0 +1,891 @@
+{
+  "$comment": "Una Lambda por handler. Esta lista la consumen el empaquetado, Terraform y las tablas de backend/README.md: es la única fuente de rutas, disparadores, permisos y eventos. Se valida con `node .claude/skills/functions-registry/scripts/functions.mjs check`; el esquema está en la skill functions-registry. `status: planned` = diseñada pero sin handler todavía; pásala a implemented (o quita el campo) al escribir el código.",
+  "functions": [
+    {
+      "name": "identity-register",
+      "service": "identity",
+      "status": "planned",
+      "description": "Da de alta unas credenciales con rol user y emite UserRegistered; el perfil lo crea el servicio de perfiles.",
+      "entry": "identity/src/main/java/com/urbanmove/identity/RegisterUserHandler.java",
+      "handler": "com.urbanmove.identity.RegisterUserHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/auth/register"},
+      "auth": ["public"],
+      "uses": [
+        {"kind": "dynamodb", "name": "identity-users", "access": "write"}
+      ],
+      "publishes": ["UserRegistered"]
+    },
+    {
+      "name": "identity-login",
+      "service": "identity",
+      "status": "planned",
+      "description": "Comprueba las credenciales y devuelve un token de sesión firmado con el rol de la cuenta.",
+      "entry": "identity/src/main/java/com/urbanmove/identity/LoginHandler.java",
+      "handler": "com.urbanmove.identity.LoginHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/auth/login"},
+      "auth": ["public"],
+      "uses": [
+        {"kind": "dynamodb", "name": "identity-users", "access": "read"},
+        {"kind": "secret", "name": "identity-signing-key", "access": "read"}
+      ]
+    },
+    {
+      "name": "identity-me",
+      "service": "identity",
+      "status": "planned",
+      "description": "Devuelve la identidad y el rol de la sesión actual.",
+      "entry": "identity/src/main/java/com/urbanmove/identity/GetCurrentUserHandler.java",
+      "handler": "com.urbanmove.identity.GetCurrentUserHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/auth/me"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "identity-users", "access": "read"}
+      ]
+    },
+    {
+      "name": "identity-create-staff",
+      "service": "identity",
+      "status": "planned",
+      "description": "Crea una cuenta de mantenimiento o de administración; solo la puede pedir un administrador.",
+      "entry": "identity/src/main/java/com/urbanmove/identity/CreateStaffAccountHandler.java",
+      "handler": "com.urbanmove.identity.CreateStaffAccountHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/auth/staff"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "identity-users", "access": "write"}
+      ]
+    },
+    {
+      "name": "identity-authorize",
+      "service": "identity",
+      "status": "planned",
+      "description": "Authorizer de API Gateway: valida el token una sola vez y pasa el rol a las funciones.",
+      "entry": "identity/src/main/java/com/urbanmove/identity/AuthorizeRequestHandler.java",
+      "handler": "com.urbanmove.identity.AuthorizeRequestHandler::handleRequest",
+      "trigger": {"type": "authorizer"},
+      "uses": [
+        {"kind": "secret", "name": "identity-signing-key", "access": "read"}
+      ]
+    },
+    {
+      "name": "profiles-on-user-registered",
+      "service": "profiles",
+      "status": "planned",
+      "description": "Crea el perfil de un usuario recién registrado. Idempotente por userId.",
+      "entry": "profiles/src/main/java/com/urbanmove/profiles/CreateProfileOnRegistrationHandler.java",
+      "handler": "com.urbanmove.profiles.CreateProfileOnRegistrationHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "profiles-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "profiles", "access": "write"}
+      ],
+      "consumes": ["UserRegistered"]
+    },
+    {
+      "name": "profiles-get-me",
+      "service": "profiles",
+      "status": "planned",
+      "description": "Consulta el perfil y las preferencias del usuario autenticado.",
+      "entry": "profiles/src/main/java/com/urbanmove/profiles/GetMyProfileHandler.java",
+      "handler": "com.urbanmove.profiles.GetMyProfileHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/profiles/me"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "profiles", "access": "read"}
+      ]
+    },
+    {
+      "name": "profiles-update-me",
+      "service": "profiles",
+      "status": "planned",
+      "description": "Actualiza los datos y preferencias del usuario, con validación básica.",
+      "entry": "profiles/src/main/java/com/urbanmove/profiles/UpdateMyProfileHandler.java",
+      "handler": "com.urbanmove.profiles.UpdateMyProfileHandler::handleRequest",
+      "trigger": {"type": "http", "method": "PUT", "path": "/profiles/me"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "profiles", "access": "write"}
+      ]
+    },
+    {
+      "name": "profiles-deactivate-me",
+      "service": "profiles",
+      "status": "planned",
+      "description": "Baja lógica del usuario: conserva el histórico y deja de aceptar reservas.",
+      "entry": "profiles/src/main/java/com/urbanmove/profiles/DeactivateMyProfileHandler.java",
+      "handler": "com.urbanmove.profiles.DeactivateMyProfileHandler::handleRequest",
+      "trigger": {"type": "http", "method": "DELETE", "path": "/profiles/me"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "profiles", "access": "write"}
+      ]
+    },
+    {
+      "name": "zones-list",
+      "service": "zones",
+      "status": "planned",
+      "description": "Lista las zonas de operación con sus restricciones de aparcamiento.",
+      "entry": "zones/src/main/java/com/urbanmove/zones/ListZonesHandler.java",
+      "handler": "com.urbanmove.zones.ListZonesHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/zones"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "zones", "access": "read"}
+      ]
+    },
+    {
+      "name": "zones-get",
+      "service": "zones",
+      "status": "planned",
+      "description": "Devuelve una zona: límites simplificados, tipos de recurso admitidos y capacidad.",
+      "entry": "zones/src/main/java/com/urbanmove/zones/GetZoneHandler.java",
+      "handler": "com.urbanmove.zones.GetZoneHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/zones/{zoneId}"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "zones", "access": "read"}
+      ]
+    },
+    {
+      "name": "zones-put",
+      "service": "zones",
+      "status": "planned",
+      "description": "Crea o modifica una zona del catálogo.",
+      "entry": "zones/src/main/java/com/urbanmove/zones/PutZoneHandler.java",
+      "handler": "com.urbanmove.zones.PutZoneHandler::handleRequest",
+      "trigger": {"type": "http", "method": "PUT", "path": "/zones/{zoneId}"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "zones", "access": "write"}
+      ]
+    },
+    {
+      "name": "inventory-on-vehicle-purchased",
+      "service": "inventory",
+      "status": "planned",
+      "description": "Da de alta como activo cada bicicleta o patinete comprado. Idempotente por vehicleId.",
+      "entry": "inventory/src/main/java/com/urbanmove/inventory/RegisterVehicleOnPurchaseHandler.java",
+      "handler": "com.urbanmove.inventory.RegisterVehicleOnPurchaseHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "inventory-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "inventory", "access": "write"}
+      ],
+      "consumes": ["VehiclePurchased"]
+    },
+    {
+      "name": "inventory-list",
+      "service": "inventory",
+      "status": "planned",
+      "description": "Lista los activos, filtrable por tipo, modelo y estado administrativo.",
+      "entry": "inventory/src/main/java/com/urbanmove/inventory/ListVehiclesHandler.java",
+      "handler": "com.urbanmove.inventory.ListVehiclesHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/vehicles"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "inventory", "access": "read"}
+      ]
+    },
+    {
+      "name": "inventory-get",
+      "service": "inventory",
+      "status": "planned",
+      "description": "Ficha de un activo: tipo, modelo, fecha de compra y estado administrativo.",
+      "entry": "inventory/src/main/java/com/urbanmove/inventory/GetVehicleHandler.java",
+      "handler": "com.urbanmove.inventory.GetVehicleHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/vehicles/{vehicleId}"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "inventory", "access": "read"}
+      ]
+    },
+    {
+      "name": "inventory-retire",
+      "service": "inventory",
+      "status": "planned",
+      "description": "Da de baja definitivamente un recurso (RETIRED).",
+      "entry": "inventory/src/main/java/com/urbanmove/inventory/RetireVehicleHandler.java",
+      "handler": "com.urbanmove.inventory.RetireVehicleHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/vehicles/{vehicleId}/retire"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "inventory", "access": "write"}
+      ],
+      "publishes": ["VehicleRetired"]
+    },
+    {
+      "name": "acquisitions-register",
+      "service": "acquisitions",
+      "status": "planned",
+      "description": "Registra la compra o incorporación de recursos nuevos y emite un VehiclePurchased por cada uno.",
+      "entry": "acquisitions/src/main/java/com/urbanmove/acquisitions/RegisterAcquisitionHandler.java",
+      "handler": "com.urbanmove.acquisitions.RegisterAcquisitionHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/acquisitions"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "acquisitions", "access": "write"}
+      ],
+      "publishes": ["VehiclePurchased"]
+    },
+    {
+      "name": "acquisitions-list",
+      "service": "acquisitions",
+      "status": "planned",
+      "description": "Lista las adquisiciones registradas.",
+      "entry": "acquisitions/src/main/java/com/urbanmove/acquisitions/ListAcquisitionsHandler.java",
+      "handler": "com.urbanmove.acquisitions.ListAcquisitionsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/acquisitions"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "acquisitions", "access": "read"}
+      ]
+    },
+    {
+      "name": "availability-list",
+      "service": "availability",
+      "status": "planned",
+      "description": "Recursos reservables ahora, filtrables por zona y tipo (consulta del usuario).",
+      "entry": "availability/src/main/java/com/urbanmove/availability/ListAvailableVehiclesHandler.java",
+      "handler": "com.urbanmove.availability.ListAvailableVehiclesHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/availability"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "availability", "access": "read"}
+      ]
+    },
+    {
+      "name": "availability-get",
+      "service": "availability",
+      "status": "planned",
+      "description": "Estado operativo de un recurso; lo usan reservas y viajes antes de actuar.",
+      "entry": "availability/src/main/java/com/urbanmove/availability/GetVehicleAvailabilityHandler.java",
+      "handler": "com.urbanmove.availability.GetVehicleAvailabilityHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/availability/{vehicleId}"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "availability", "access": "read"}
+      ]
+    },
+    {
+      "name": "availability-summary",
+      "service": "availability",
+      "status": "planned",
+      "description": "Recuento de recursos por estado, zona y tipo, en tiempo real.",
+      "entry": "availability/src/main/java/com/urbanmove/availability/GetAvailabilitySummaryHandler.java",
+      "handler": "com.urbanmove.availability.GetAvailabilitySummaryHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/availability/summary"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "availability", "access": "read"}
+      ]
+    },
+    {
+      "name": "availability-apply-event",
+      "service": "availability",
+      "status": "planned",
+      "description": "Aplica a la máquina de estados del recurso cada evento que lo cambia, valida la transición y emite VehicleStateChanged.",
+      "entry": "availability/src/main/java/com/urbanmove/availability/ApplyVehicleEventHandler.java",
+      "handler": "com.urbanmove.availability.ApplyVehicleEventHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "availability-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "availability", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleStateChanged"],
+      "consumes": ["VehiclePurchased", "VehicleReserved", "ReservationCancelled", "ReservationExpired", "RideStarted", "RideFinished", "VehicleBatteryLow", "VehicleWithdrawnForMaintenance", "MaintenanceTaskStarted", "MaintenanceTaskCompleted", "VehicleReturnedToService", "VehicleRetired"]
+    },
+    {
+      "name": "telemetry-record",
+      "service": "telemetry",
+      "status": "planned",
+      "description": "Recibe una lectura simulada (batería, ubicación, km) y emite VehicleBatteryLow si baja del umbral.",
+      "entry": "telemetry/src/main/java/com/urbanmove/telemetry/RecordTelemetryHandler.java",
+      "handler": "com.urbanmove.telemetry.RecordTelemetryHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/telemetry/readings"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "telemetry", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleBatteryLow"]
+    },
+    {
+      "name": "telemetry-list-attention",
+      "service": "telemetry",
+      "status": "planned",
+      "description": "Recursos con batería baja, uso anómalo o revisión pendiente (consulta de mantenimiento).",
+      "entry": "telemetry/src/main/java/com/urbanmove/telemetry/ListVehiclesNeedingAttentionHandler.java",
+      "handler": "com.urbanmove.telemetry.ListVehiclesNeedingAttentionHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/telemetry/attention"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "telemetry", "access": "read"}
+      ]
+    },
+    {
+      "name": "telemetry-on-ride-finished",
+      "service": "telemetry",
+      "status": "planned",
+      "description": "Descuenta batería, suma el uso desde la última revisión y emite VehicleBatteryLow o VehicleInspectionDue si procede.",
+      "entry": "telemetry/src/main/java/com/urbanmove/telemetry/UpdateUsageOnRideFinishedHandler.java",
+      "handler": "com.urbanmove.telemetry.UpdateUsageOnRideFinishedHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "telemetry-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "telemetry", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleBatteryLow", "VehicleInspectionDue"],
+      "consumes": ["RideFinished"]
+    },
+    {
+      "name": "reservations-create",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Reserva un recurso disponible con escritura condicional, para que no se reserve dos veces, y emite VehicleReserved.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/CreateReservationHandler.java",
+      "handler": "com.urbanmove.reservations.CreateReservationHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/reservations"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleReserved"]
+    },
+    {
+      "name": "reservations-confirm",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Confirma una reserva pendiente antes de que caduque.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/ConfirmReservationHandler.java",
+      "handler": "com.urbanmove.reservations.ConfirmReservationHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/reservations/{reservationId}/confirm"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "readwrite"}
+      ],
+      "publishes": ["ReservationConfirmed"]
+    },
+    {
+      "name": "reservations-cancel",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Cancela una reserva del usuario y libera el recurso.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/CancelReservationHandler.java",
+      "handler": "com.urbanmove.reservations.CancelReservationHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/reservations/{reservationId}/cancel"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "readwrite"}
+      ],
+      "publishes": ["ReservationCancelled"]
+    },
+    {
+      "name": "reservations-get",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Consulta una reserva propia.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/GetReservationHandler.java",
+      "handler": "com.urbanmove.reservations.GetReservationHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/reservations/{reservationId}"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "read"}
+      ]
+    },
+    {
+      "name": "reservations-expire",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Cada minuto libera las reservas sin confirmar a tiempo y emite ReservationExpired por cada una.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/ExpireReservationsHandler.java",
+      "handler": "com.urbanmove.reservations.ExpireReservationsHandler::handleRequest",
+      "trigger": {"type": "schedule", "expression": "rate(1 minute)"},
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "readwrite"}
+      ],
+      "publishes": ["ReservationExpired"]
+    },
+    {
+      "name": "reservations-on-ride-started",
+      "service": "reservations",
+      "status": "planned",
+      "description": "Marca la reserva como usada cuando empieza el viaje, para que no caduque en mitad de él.",
+      "entry": "reservations/src/main/java/com/urbanmove/reservations/ConsumeReservationOnRideStartedHandler.java",
+      "handler": "com.urbanmove.reservations.ConsumeReservationOnRideStartedHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "reservations-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "reservations", "access": "readwrite"}
+      ],
+      "consumes": ["RideStarted"]
+    },
+    {
+      "name": "rides-start",
+      "service": "rides",
+      "status": "planned",
+      "description": "Inicia un viaje sobre un recurso reservado o disponible y emite RideStarted.",
+      "entry": "rides/src/main/java/com/urbanmove/rides/StartRideHandler.java",
+      "handler": "com.urbanmove.rides.StartRideHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/rides"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "rides", "access": "readwrite"}
+      ],
+      "publishes": ["RideStarted"]
+    },
+    {
+      "name": "rides-finish",
+      "service": "rides",
+      "status": "planned",
+      "description": "Finaliza el viaje en la zona de destino, calcula duración y coste preliminar y emite RideFinished.",
+      "entry": "rides/src/main/java/com/urbanmove/rides/FinishRideHandler.java",
+      "handler": "com.urbanmove.rides.FinishRideHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/rides/{rideId}/finish"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "rides", "access": "readwrite"}
+      ],
+      "publishes": ["RideFinished"]
+    },
+    {
+      "name": "rides-get",
+      "service": "rides",
+      "status": "planned",
+      "description": "Consulta un viaje: origen, destino, duración y coste.",
+      "entry": "rides/src/main/java/com/urbanmove/rides/GetRideHandler.java",
+      "handler": "com.urbanmove.rides.GetRideHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/rides/{rideId}"},
+      "auth": ["user", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "rides", "access": "read"}
+      ]
+    },
+    {
+      "name": "incidents-report",
+      "service": "incidents",
+      "status": "planned",
+      "description": "Registra una avería, vandalismo, bloqueo o recurso desaparecido, y emite IncidentReported.",
+      "entry": "incidents/src/main/java/com/urbanmove/incidents/ReportIncidentHandler.java",
+      "handler": "com.urbanmove.incidents.ReportIncidentHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/incidents"},
+      "auth": ["user", "maintenance"],
+      "uses": [
+        {"kind": "dynamodb", "name": "incidents", "access": "write"}
+      ],
+      "publishes": ["IncidentReported"]
+    },
+    {
+      "name": "incidents-list",
+      "service": "incidents",
+      "status": "planned",
+      "description": "Lista incidencias, filtrables por estado, tipo y recurso.",
+      "entry": "incidents/src/main/java/com/urbanmove/incidents/ListIncidentsHandler.java",
+      "handler": "com.urbanmove.incidents.ListIncidentsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/incidents"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "incidents", "access": "read"}
+      ]
+    },
+    {
+      "name": "incidents-on-task-completed",
+      "service": "incidents",
+      "status": "planned",
+      "description": "Cierra la incidencia asociada cuando se completa la tarea de mantenimiento.",
+      "entry": "incidents/src/main/java/com/urbanmove/incidents/ResolveIncidentOnTaskCompletedHandler.java",
+      "handler": "com.urbanmove.incidents.ResolveIncidentOnTaskCompletedHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "incidents-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "incidents", "access": "readwrite"}
+      ],
+      "consumes": ["MaintenanceTaskCompleted"]
+    },
+    {
+      "name": "maintenance-detect",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Genera una orden de mantenimiento ante batería baja, avería o exceso de usos desde la última revisión.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/DetectMaintenanceNeedHandler.java",
+      "handler": "com.urbanmove.maintenance.DetectMaintenanceNeedHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "maintenance-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ],
+      "publishes": ["MaintenanceOrderCreated"],
+      "consumes": ["VehicleBatteryLow", "IncidentReported", "VehicleInspectionDue"]
+    },
+    {
+      "name": "maintenance-list-orders",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Lista las órdenes de mantenimiento, filtrables por estado (abierta, en curso, completada).",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/ListMaintenanceOrdersHandler.java",
+      "handler": "com.urbanmove.maintenance.ListMaintenanceOrdersHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/maintenance-orders"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "read"}
+      ]
+    },
+    {
+      "name": "maintenance-get-order",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Detalle de una orden con sus tareas.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/GetMaintenanceOrderHandler.java",
+      "handler": "com.urbanmove.maintenance.GetMaintenanceOrderHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/maintenance-orders/{orderId}"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "read"}
+      ]
+    },
+    {
+      "name": "maintenance-assign",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Asigna una orden a una persona de mantenimiento.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/AssignMaintenanceOrderHandler.java",
+      "handler": "com.urbanmove.maintenance.AssignMaintenanceOrderHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/maintenance-orders/{orderId}/assign"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ]
+    },
+    {
+      "name": "maintenance-withdraw",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Retira el recurso de la vía pública y emite VehicleWithdrawnForMaintenance.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/WithdrawVehicleHandler.java",
+      "handler": "com.urbanmove.maintenance.WithdrawVehicleHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/maintenance-orders/{orderId}/withdraw"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleWithdrawnForMaintenance"]
+    },
+    {
+      "name": "maintenance-start-task",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Registra el inicio de una tarea de recarga, reparación o revisión.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/StartMaintenanceTaskHandler.java",
+      "handler": "com.urbanmove.maintenance.StartMaintenanceTaskHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/maintenance-orders/{orderId}/tasks"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ],
+      "publishes": ["MaintenanceTaskStarted"]
+    },
+    {
+      "name": "maintenance-complete-task",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Da por terminada una tarea y deja el recurso listo para volver a la calle.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/CompleteMaintenanceTaskHandler.java",
+      "handler": "com.urbanmove.maintenance.CompleteMaintenanceTaskHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/maintenance-orders/{orderId}/tasks/{taskId}/complete"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ],
+      "publishes": ["MaintenanceTaskCompleted"]
+    },
+    {
+      "name": "maintenance-return-to-service",
+      "service": "maintenance",
+      "status": "planned",
+      "description": "Reincorpora el recurso al servicio, cierra la orden y emite VehicleReturnedToService.",
+      "entry": "maintenance/src/main/java/com/urbanmove/maintenance/ReturnVehicleToServiceHandler.java",
+      "handler": "com.urbanmove.maintenance.ReturnVehicleToServiceHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/maintenance-orders/{orderId}/return-to-service"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "maintenance-orders", "access": "readwrite"}
+      ],
+      "publishes": ["VehicleReturnedToService"]
+    },
+    {
+      "name": "relocation-propose",
+      "service": "relocation",
+      "status": "planned",
+      "description": "Crea una orden de recolocación desde una zona con exceso hacia la zona con déficit del hotspot y emite RelocationOrderCreated.",
+      "entry": "relocation/src/main/java/com/urbanmove/relocation/ProposeRelocationOrderHandler.java",
+      "handler": "com.urbanmove.relocation.ProposeRelocationOrderHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "relocation-hotspots"},
+      "uses": [
+        {"kind": "dynamodb", "name": "relocation-orders", "access": "readwrite"}
+      ],
+      "publishes": ["RelocationOrderCreated"],
+      "consumes": ["DemandHotspotDetected"]
+    },
+    {
+      "name": "relocation-list-orders",
+      "service": "relocation",
+      "status": "planned",
+      "description": "Lista las órdenes de recolocación, filtrables por estado.",
+      "entry": "relocation/src/main/java/com/urbanmove/relocation/ListRelocationOrdersHandler.java",
+      "handler": "com.urbanmove.relocation.ListRelocationOrdersHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/relocation-orders"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "relocation-orders", "access": "read"}
+      ]
+    },
+    {
+      "name": "relocation-assign",
+      "service": "relocation",
+      "status": "planned",
+      "description": "Marca una orden como asignada.",
+      "entry": "relocation/src/main/java/com/urbanmove/relocation/AssignRelocationOrderHandler.java",
+      "handler": "com.urbanmove.relocation.AssignRelocationOrderHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/relocation-orders/{orderId}/assign"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "relocation-orders", "access": "readwrite"}
+      ],
+      "publishes": ["RelocationOrderStatusChanged"]
+    },
+    {
+      "name": "relocation-start",
+      "service": "relocation",
+      "status": "planned",
+      "description": "Marca una orden como en curso.",
+      "entry": "relocation/src/main/java/com/urbanmove/relocation/StartRelocationOrderHandler.java",
+      "handler": "com.urbanmove.relocation.StartRelocationOrderHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/relocation-orders/{orderId}/start"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "relocation-orders", "access": "readwrite"}
+      ],
+      "publishes": ["RelocationOrderStatusChanged"]
+    },
+    {
+      "name": "relocation-complete",
+      "service": "relocation",
+      "status": "planned",
+      "description": "Marca una orden como completada y emite RelocationOrderCompleted.",
+      "entry": "relocation/src/main/java/com/urbanmove/relocation/CompleteRelocationOrderHandler.java",
+      "handler": "com.urbanmove.relocation.CompleteRelocationOrderHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/relocation-orders/{orderId}/complete"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "relocation-orders", "access": "readwrite"}
+      ],
+      "publishes": ["RelocationOrderCompleted"]
+    },
+    {
+      "name": "history-record",
+      "service": "history",
+      "status": "planned",
+      "description": "Guarda cada evento relevante en el historial. Idempotente por eventId.",
+      "entry": "history/src/main/java/com/urbanmove/history/RecordEventHandler.java",
+      "handler": "com.urbanmove.history.RecordEventHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "history-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "history", "access": "write"}
+      ],
+      "consumes": ["UserRegistered", "VehiclePurchased", "VehicleReserved", "ReservationConfirmed", "ReservationCancelled", "ReservationExpired", "RideStarted", "RideFinished", "VehicleBatteryLow", "IncidentReported", "MaintenanceOrderCreated", "VehicleWithdrawnForMaintenance", "MaintenanceTaskStarted", "MaintenanceTaskCompleted", "VehicleReturnedToService", "RelocationOrderCreated", "RelocationOrderStatusChanged", "RelocationOrderCompleted"]
+    },
+    {
+      "name": "history-list-mine",
+      "service": "history",
+      "status": "planned",
+      "description": "Historial personal de reservas y viajes del usuario.",
+      "entry": "history/src/main/java/com/urbanmove/history/ListMyHistoryHandler.java",
+      "handler": "com.urbanmove.history.ListMyHistoryHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/history/me"},
+      "auth": ["user"],
+      "uses": [
+        {"kind": "dynamodb", "name": "history", "access": "read"}
+      ]
+    },
+    {
+      "name": "history-list-vehicle",
+      "service": "history",
+      "status": "planned",
+      "description": "Historial de un recurso: viajes, incidencias, mantenimiento y recolocaciones.",
+      "entry": "history/src/main/java/com/urbanmove/history/ListVehicleHistoryHandler.java",
+      "handler": "com.urbanmove.history.ListVehicleHistoryHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/history/vehicles/{vehicleId}"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "history", "access": "read"}
+      ]
+    },
+    {
+      "name": "history-trace",
+      "service": "history",
+      "status": "planned",
+      "description": "Devuelve todos los eventos de un flujo por su correlationId, para diagnosticar de extremo a extremo.",
+      "entry": "history/src/main/java/com/urbanmove/history/TraceCorrelationHandler.java",
+      "handler": "com.urbanmove.history.TraceCorrelationHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/history/correlations/{correlationId}"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "history", "access": "read"}
+      ]
+    },
+    {
+      "name": "notifications-send",
+      "service": "notifications",
+      "status": "planned",
+      "description": "Simula el envío de avisos a usuarios, mantenimiento u operaciones y los guarda en su bandeja.",
+      "entry": "notifications/src/main/java/com/urbanmove/notifications/SendNotificationHandler.java",
+      "handler": "com.urbanmove.notifications.SendNotificationHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "notifications-events"},
+      "uses": [
+        {"kind": "dynamodb", "name": "notifications", "access": "write"}
+      ],
+      "consumes": ["VehicleReserved", "ReservationExpired", "RideFinished", "VehicleBatteryLow", "IncidentReported", "MaintenanceOrderCreated", "RelocationOrderCreated", "RelocationOrderCompleted"]
+    },
+    {
+      "name": "notifications-list-mine",
+      "service": "notifications",
+      "status": "planned",
+      "description": "Bandeja de avisos de quien consulta.",
+      "entry": "notifications/src/main/java/com/urbanmove/notifications/ListMyNotificationsHandler.java",
+      "handler": "com.urbanmove.notifications.ListMyNotificationsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/notifications"},
+      "auth": ["user", "maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "notifications", "access": "read"}
+      ]
+    },
+    {
+      "name": "datalake-ingest",
+      "service": "datalake",
+      "status": "planned",
+      "description": "Copia cada evento tal cual llega a raw/, particionado por fecha, tipo y servicio productor.",
+      "entry": "datalake/src/main/java/com/urbanmove/datalake/IngestEventHandler.java",
+      "handler": "com.urbanmove.datalake.IngestEventHandler::handleRequest",
+      "trigger": {"type": "sqs", "queue": "datalake-ingest"},
+      "uses": [
+        {"kind": "s3", "name": "datalake", "access": "write"}
+      ],
+      "consumes": ["IncidentReported", "MaintenanceOrderCreated", "MaintenanceTaskCompleted", "MaintenanceTaskStarted", "RelocationOrderCompleted", "RelocationOrderCreated", "RelocationOrderStatusChanged", "ReservationCancelled", "ReservationConfirmed", "ReservationExpired", "RideFinished", "RideStarted", "UserRegistered", "VehicleBatteryLow", "VehicleInspectionDue", "VehiclePurchased", "VehicleReserved", "VehicleRetired", "VehicleReturnedToService", "VehicleStateChanged", "VehicleWithdrawnForMaintenance"],
+      "timeoutSeconds": 30
+    },
+    {
+      "name": "datalake-promote-to-trusted",
+      "service": "datalake",
+      "status": "planned",
+      "description": "Valida y normaliza lo nuevo de raw/ y lo escribe en trusted/; lo que no cumple el esquema se aparta para revisarlo.",
+      "entry": "datalake/src/main/java/com/urbanmove/datalake/PromoteToTrustedHandler.java",
+      "handler": "com.urbanmove.datalake.PromoteToTrustedHandler::handleRequest",
+      "trigger": {"type": "s3", "bucket": "datalake", "prefix": "raw/"},
+      "uses": [
+        {"kind": "s3", "name": "datalake", "access": "readwrite"}
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "analytics-build-marts",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Actualiza de forma incremental los data marts (usuarios, reservas, viajes, flota, mantenimiento, operaciones, demanda) con lo nuevo de trusted/.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/BuildDataMartsHandler.java",
+      "handler": "com.urbanmove.analytics.BuildDataMartsHandler::handleRequest",
+      "trigger": {"type": "s3", "bucket": "datalake", "prefix": "trusted/"},
+      "uses": [
+        {"kind": "s3", "name": "datalake", "access": "read"},
+        {"kind": "dynamodb", "name": "analytics-marts", "access": "readwrite"}
+      ],
+      "memoryMb": 1024,
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "analytics-rebuild-marts",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Recalcula los data marts de una ventana temporal indicada, por si un fallo los dejó incompletos.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/RebuildDataMartsHandler.java",
+      "handler": "com.urbanmove.analytics.RebuildDataMartsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/analytics/marts/rebuild"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "s3", "name": "datalake", "access": "read"},
+        {"kind": "dynamodb", "name": "analytics-marts", "access": "readwrite"}
+      ],
+      "memoryMb": 1024,
+      "timeoutSeconds": 29
+    },
+    {
+      "name": "analytics-detect-hotspots",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Cada 5 minutos lee el data mart de demanda: zona con menos de 3 recursos y más de 10 intentos en la última hora es un hotspot; emite DemandHotspotDetected.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/DetectDemandHotspotsHandler.java",
+      "handler": "com.urbanmove.analytics.DetectDemandHotspotsHandler::handleRequest",
+      "trigger": {"type": "schedule", "expression": "rate(5 minutes)"},
+      "uses": [
+        {"kind": "dynamodb", "name": "analytics-marts", "access": "read"}
+      ],
+      "publishes": ["DemandHotspotDetected"]
+    },
+    {
+      "name": "analytics-get-mart",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Consulta un data mart (users, reservations, rides, fleet, maintenance, operations, demand) con filtros de zona, tipo y ventana.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/GetDataMartHandler.java",
+      "handler": "com.urbanmove.analytics.GetDataMartHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/analytics/marts/{mart}"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "analytics-marts", "access": "read"}
+      ]
+    },
+    {
+      "name": "analytics-dashboard",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Resumen para el primer pintado del dashboard: flota por estado, reservas y viajes por franja, zonas con déficit o exceso, órdenes abiertas.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/GetDashboardSummaryHandler.java",
+      "handler": "com.urbanmove.analytics.GetDashboardSummaryHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/analytics/dashboard"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "dynamodb", "name": "analytics-marts", "access": "read"}
+      ]
+    },
+    {
+      "name": "analytics-health",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Salud del sistema: errores recientes por función y eventos fallidos pendientes.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/GetSystemHealthHandler.java",
+      "handler": "com.urbanmove.analytics.GetSystemHealthHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/analytics/health"},
+      "auth": ["maintenance", "admin"],
+      "uses": [
+        {"kind": "cloudwatch", "name": "metrics", "access": "read"},
+        {"kind": "sqs", "name": "dead-letter-queues", "access": "read"}
+      ]
+    },
+    {
+      "name": "analytics-failed-events",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Lista los eventos que han acabado en una dead-letter queue, con su correlationId.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/ListFailedEventsHandler.java",
+      "handler": "com.urbanmove.analytics.ListFailedEventsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "GET", "path": "/analytics/failed-events"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "sqs", "name": "dead-letter-queues", "access": "read"}
+      ]
+    },
+    {
+      "name": "analytics-replay-failed-events",
+      "service": "analytics",
+      "status": "planned",
+      "description": "Devuelve a su cola de origen los eventos de una dead-letter queue para reprocesarlos.",
+      "entry": "analytics/src/main/java/com/urbanmove/analytics/ReplayFailedEventsHandler.java",
+      "handler": "com.urbanmove.analytics.ReplayFailedEventsHandler::handleRequest",
+      "trigger": {"type": "http", "method": "POST", "path": "/analytics/failed-events/replay"},
+      "auth": ["admin"],
+      "uses": [
+        {"kind": "sqs", "name": "dead-letter-queues", "access": "readwrite"}
+      ]
+    }
+  ]
+}

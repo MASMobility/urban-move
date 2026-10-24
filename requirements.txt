@@ -1,0 +1,3 @@
+# Dependencias Python de las herramientas de agentes (skill aws-architecture-diagram)
+# Instalar: python -m pip install -r requirements.txt   (en Windows: py -m pip ...)
+defusedxml>=0.7.1
