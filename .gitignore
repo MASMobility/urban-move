@@ -30,8 +30,12 @@ replay_pid*
 *.tfvars
 !*.tfvars.example
 crash.log
-.aws-sam/
 **/__pycache__/
 
-# CMP file
+# OpenCode personal config (MCP servers, keys). The shared config is opencode.jsonc
 opencode.json
+
+# Local secrets (e.g. LOCALSTACK_AUTH_TOKEN)
+.env
+.env.*
+!.env.example

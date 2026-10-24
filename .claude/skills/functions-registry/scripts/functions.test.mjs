@@ -11,7 +11,7 @@ const HANDLER_DIR = 'reservations/src/main/java/com/urbanmove/reservations'
 const create = {
   name: 'reservations-create',
   service: 'reservations',
-  description: 'Crea una reserva sobre un recurso disponible.',
+  description: 'Creates a reservation on an available resource.',
   entry: `${HANDLER_DIR}/CreateReservationHandler.java`,
   handler: 'com.urbanmove.reservations.CreateReservationHandler::handleRequest',
   trigger: { type: 'http', method: 'POST', path: '/reservations' },
@@ -22,7 +22,7 @@ const create = {
 const expire = {
   name: 'reservations-expire',
   service: 'reservations',
-  description: 'Libera las reservas que no se confirman a tiempo.',
+  description: 'Releases reservations that are not confirmed in time.',
   entry: `${HANDLER_DIR}/ExpireReservationsHandler.java`,
   handler: 'com.urbanmove.reservations.ExpireReservationsHandler::handleRequest',
   trigger: { type: 'schedule', expression: 'rate(1 minute)' },
@@ -31,7 +31,7 @@ const expire = {
 const record = {
   name: 'history-record',
   service: 'history',
-  description: 'Guarda cada evento en el historial.',
+  description: 'Stores every event in the history.',
   entry: 'history/src/main/java/com/urbanmove/history/RecordEventHandler.java',
   handler: 'com.urbanmove.history.RecordEventHandler::handleRequest',
   trigger: { type: 'sqs', queue: 'history-events' },
@@ -57,7 +57,7 @@ const quiet = async (fn) => {
   try { return await fn() } finally { Object.assign(console, { log, error, warn }) }
 }
 
-test('un registro correcto no da errores', async () => {
+test('a correct registry gives no errors', async () => {
   const root = await repo([create, expire, record])
   const { errors, warnings } = validate({ functions: [create, expire, record] }, { backendDir: join(root, 'backend') })
   assert.deepEqual(errors, [])
@@ -65,7 +65,7 @@ test('un registro correcto no da errores', async () => {
   await rm(root, { recursive: true })
 })
 
-test('detecta duplicados, erratas y handler que no cuadra con entry', async () => {
+test('detects duplicates, typos and a handler that does not match entry', async () => {
   const root = await repo([create])
   const broken = [
     create,
@@ -74,27 +74,27 @@ test('detecta duplicados, erratas y handler que no cuadra con entry', async () =
   ]
   const { errors } = validate({ functions: broken }, { backendDir: join(root, 'backend') })
   const text = errors.join('\n')
-  assert.match(text, /nombre duplicado/)
-  assert.match(text, /ya la sirve/)
-  assert.match(text, /campo desconocido "acces"/)
-  assert.match(text, /no corresponde con "entry"/)
+  assert.match(text, /duplicate name/)
+  assert.match(text, /is already served by/)
+  assert.match(text, /unknown field "acces"/)
+  assert.match(text, /does not match "entry"/)
   await rm(root, { recursive: true })
 })
 
-test('exige auth en HTTP, consumes en SQS y servicio coherente con el módulo', async () => {
+test('requires auth for HTTP, consumes for SQS and a service that matches the module', async () => {
   const root = await repo([create, record])
   const { errors } = validate(
     { functions: [{ ...create, auth: undefined }, { ...record, consumes: undefined }, { ...expire, service: 'rides', name: 'rides-expire' }] },
     { backendDir: join(root, 'backend') },
   )
   const text = errors.join('\n')
-  assert.match(text, /"auth" es obligatorio en HTTP/)
-  assert.match(text, /necesita "consumes"/)
-  assert.match(text, /debe estar en el módulo "rides\/"/)
+  assert.match(text, /"auth" is required for HTTP/)
+  assert.match(text, /needs "consumes"/)
+  assert.match(text, /must be in the module "rides\/"/)
   await rm(root, { recursive: true })
 })
 
-test('un handler sin registrar es un error y un consumidor huérfano un aviso', async () => {
+test('an unregistered handler is an error and an orphan consumer a warning', async () => {
   const root = await repo([create, record], { extraHandlers: [`${HANDLER_DIR}/LooseHandler.java`] })
   const registry = { functions: [create, record] }
   const { errors, warnings } = validate(registry, {
@@ -102,12 +102,12 @@ test('un handler sin registrar es un error y un consumidor huérfano un aviso', 
     handlerFiles: [create.entry, record.entry, `${HANDLER_DIR}/LooseHandler.java`],
   })
   assert.equal(errors.length, 1)
-  assert.match(errors[0], /handler sin registrar: backend\/reservations\/.*LooseHandler/)
-  assert.match(warnings.join('\n'), /history-record: consume ReservationExpired/)
+  assert.match(errors[0], /unregistered handler: backend\/reservations\/.*LooseHandler/)
+  assert.match(warnings.join('\n'), /history-record: consumes ReservationExpired/)
   await rm(root, { recursive: true })
 })
 
-test('una función planned no necesita su fichero; si existe, avisa', async () => {
+test('a planned function does not need its file; if it exists, it warns', async () => {
   const root = await repo([create])
   const planned = { ...expire, status: 'planned' }
   const ok = validate({ functions: [create, planned] }, { backendDir: join(root, 'backend') })
@@ -115,42 +115,42 @@ test('una función planned no necesita su fichero; si existe, avisa', async () =
   assert.deepEqual(ok.warnings, [])
 
   const missing = validate({ functions: [create, expire] }, { backendDir: join(root, 'backend') })
-  assert.match(missing.errors.join('\n'), /"entry" no existe.*"status": "planned"/)
+  assert.match(missing.errors.join('\n'), /"entry" does not exist.*"status": "planned"/)
 
   const stale = validate({ functions: [{ ...create, status: 'planned' }] }, { backendDir: join(root, 'backend') })
-  assert.match(stale.warnings.join('\n'), /ya existe; márcala como "implemented"/)
+  assert.match(stale.warnings.join('\n'), /already exists; mark it as "implemented"/)
 
   const wrong = validate({ functions: [{ ...create, status: 'done' }] }, { backendDir: join(root, 'backend') })
-  assert.match(wrong.errors.join('\n'), /"status" debe ser/)
+  assert.match(wrong.errors.join('\n'), /"status" must be/)
   await rm(root, { recursive: true })
 })
 
-test('el authorizer y los usos de sqs/cloudwatch son válidos; authorizer no admite auth', async () => {
+test('the authorizer and sqs/cloudwatch uses are valid; an authorizer does not accept auth', async () => {
   const root = await repo([create])
   const authorizer = { ...expire, name: 'reservations-authorize', status: 'planned', trigger: { type: 'authorizer' }, publishes: undefined,
     uses: [{ kind: 'sqs', name: 'dead-letter-queues', access: 'read' }, { kind: 'cloudwatch', name: 'metrics', access: 'read' }] }
   assert.deepEqual(validate({ functions: [create, authorizer] }, { backendDir: join(root, 'backend') }).errors, [])
   const bad = validate({ functions: [{ ...authorizer, auth: ['user'] }] }, { backendDir: join(root, 'backend') })
-  assert.match(bad.errors.join('\n'), /"auth" solo aplica a funciones HTTP/)
-  assert.match(renderBlocks([authorizer]).triggers, /Authorizer de API Gateway/)
+  assert.match(bad.errors.join('\n'), /"auth" only applies to HTTP functions/)
+  assert.match(renderBlocks([authorizer]).triggers, /API Gateway authorizer/)
   await rm(root, { recursive: true })
 })
 
-test('renderBlocks cruza productores y consumidores de eventos', () => {
+test('renderBlocks matches event producers and consumers', () => {
   const { events, routes, triggers } = renderBlocks([create, expire, record])
   assert.match(events, /\| `ReservationExpired` \| `reservations-expire` \| `history-record` \|/)
   assert.match(routes, /\| POST \| `\/reservations` \| `reservations-create` \| reservations \| user \|/)
-  assert.match(triggers, /Programada `rate\(1 minute\)`/)
+  assert.match(triggers, /Scheduled `rate\(1 minute\)`/)
   assert.match(triggers, /SQS `history-events`/)
 })
 
-test('sync añade la sección, check detecta desfases y sync es idempotente', async () => {
-  const root = await repo([create, expire, record], { readme: '# backend\n\nTexto propio.\n' })
+test('sync adds the section, check detects drift and sync is idempotent', async () => {
+  const root = await repo([create, expire, record], { readme: '# backend\n\nOwn text.\n' })
   assert.equal(await quiet(() => run('check', root)), 1)
 
   assert.equal(await quiet(() => run('sync', root)), 0)
   const first = await readFile(join(root, 'backend/README.md'), 'utf8')
-  assert.match(first, /Texto propio\./)
+  assert.match(first, /Own text\./)
   assert.match(first, /<!-- functions:routes:start -->/)
   assert.equal(await quiet(() => run('check', root)), 0)
 
@@ -165,7 +165,7 @@ test('sync añade la sección, check detecta desfases y sync es idempotente', as
   await rm(root, { recursive: true })
 })
 
-test('sync no toca el README si el registro es inválido', async () => {
+test('sync does not touch the README if the registry is invalid', async () => {
   const root = await repo([create], { readme: '# backend\n' })
   await writeFile(join(root, 'backend/functions.json'), JSON.stringify({ functions: [{ ...create, trigger: { type: 'http', method: 'POST' } }] }))
   assert.equal(await quiet(() => run('sync', root)), 1)
@@ -173,7 +173,7 @@ test('sync no toca el README si el registro es inválido', async () => {
   await rm(root, { recursive: true })
 })
 
-test('respeta los saltos de línea CRLF', () => {
+test('keeps CRLF line endings', () => {
   const out = applyBlocks('# backend\r\n', renderBlocks([]))
   assert.ok(out.includes('\r\n') && !/[^\r]\n/.test(out))
 })

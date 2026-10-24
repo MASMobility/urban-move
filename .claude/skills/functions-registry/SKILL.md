@@ -1,99 +1,99 @@
 ---
 name: functions-registry
-description: Mantiene backend/functions.json, el registro único de todas las Lambdas de UrbanMove (ruta HTTP, disparador SQS/EventBridge/cron, permisos, eventos que publica y consume) y las tablas generadas de backend/README.md. Úsala SIEMPRE que crees, borres o renombres un handler o Lambda Java, cambies su ruta, disparador, permisos o eventos, o toques Terraform/README que dependan del registro. Use whenever a Lambda handler, route, trigger, IAM access or domain event changes.
+description: "Maintains backend/functions.json, the single registry of every UrbanMove Lambda (HTTP route, SQS/EventBridge/cron trigger, permissions, events it publishes and consumes), and the generated tables of backend/README.md. Use it ALWAYS when you create, delete or rename a Lambda handler, or change its route, trigger, permissions or events, or touch Terraform or README content that depends on the registry."
 ---
 
-# functions.json: el registro de funciones
+# functions.json: the function registry
 
-`backend/functions.json` es la **única fuente** de qué Lambdas existen. De él salen:
+`backend/functions.json` is the **single source** of which Lambdas exist. It feeds:
 
-| Consumidor | Qué toma del registro |
+| Consumer | What it takes from the registry |
 |---|---|
-| Empaquetado (Maven) | qué módulo y qué handler hay en cada función |
-| `infrastructure/` (Terraform) | las Lambdas, sus rutas de API Gateway, sus disparadores y su IAM (`uses`, `publishes`) |
-| `backend/README.md` | cuatro tablas generadas: rutas, funciones por eventos, permisos, eventos |
-| Documentación del PDF | contratos de eventos (quién publica, quién consume) y propiedad de datos |
+| Packaging (Maven) | which module and which handler each function has |
+| `infrastructure/` (Terraform) | the Lambdas, their API Gateway routes, their triggers and their IAM (`uses`, `publishes`) |
+| `backend/README.md` | four generated tables: routes, event-driven functions, permissions, events |
+| The course PDF | event contracts (who publishes, who consumes) and data ownership |
 
-Si el código y el registro se separan, Terraform despliega lo que no es y el README miente. Por eso el
-registro se actualiza **en el mismo cambio** que el código y se comprueba con un script.
+If code and registry drift apart, Terraform deploys something that is not there and the README lies. So the
+registry changes **in the same change** as the code and is checked by a script.
 
-## Cuándo hay que tocarlo
+## When to touch it
 
-- Nuevo handler, o handler borrado/renombrado/movido de módulo.
-- Cambia el método o la ruta, el rol que puede llamarla, o el disparador (SQS, EventBridge, cron...).
-- La función empieza o deja de usar una tabla DynamoDB, un bucket S3 o un secreto.
-- La función empieza o deja de publicar o consumir un evento de dominio.
-- Cambia la memoria, el timeout o la concurrencia reservada.
+- A new handler, or a handler deleted, renamed or moved to another module.
+- The method or route changes, the roles that may call it, or its trigger (SQS, EventBridge, cron...).
+- The function starts or stops using a DynamoDB table, an S3 bucket or a secret.
+- The function starts or stops publishing or consuming a domain event.
+- Memory, timeout or reserved concurrency change.
 
-Si dudas de si un cambio lo afecta, ejecuta `check`: es barato.
+If you doubt whether a change affects it, run `check`: it is cheap.
 
-## Flujo
+## Flow
 
-1. Edita `backend/functions.json` junto con el código.
+1. Edit `backend/functions.json` together with the code.
 2. `node .claude/skills/functions-registry/scripts/functions.mjs sync`
-   valida el registro y regenera los bloques de `backend/README.md`. Si hay errores no escribe nada.
+   validates the registry and regenerates the blocks of `backend/README.md`. If there are errors it writes nothing.
 3. `node .claude/skills/functions-registry/scripts/functions.mjs check`
-   debe acabar en `OK` (exit 0). Es lo que ha de ejecutar CI.
-4. Commitea código, `functions.json` y README juntos.
+   must end with `OK` (exit 0). CI runs it.
+4. Commit code, `functions.json` and README together.
 
-Los bloques entre `<!-- functions:...:start -->` y `<!-- functions:...:end -->` los escribe el script:
-**no se editan a mano**. Si falta alguno, `sync` añade la sección "Funciones" al final del README la
-primera vez. Todo lo demás del README es texto propio y no se toca.
+The blocks between `<!-- functions:...:start -->` and `<!-- functions:...:end -->` are written by the script:
+**do not edit them by hand**. If one is missing, `sync` appends a "Functions" section to the README the first
+time. Everything else in the README is own text and is never touched.
 
-## De `planned` a `implemented`
+## From `planned` to `implemented`
 
-El registro se puede escribir antes que el código: una función `planned` documenta el diseño (rutas,
-permisos, eventos) y ya sale en las tablas con estado «planeada». Al crear su handler, quita el campo
-`status` (o pon `implemented`); el validador avisa si el fichero ya existe y la función sigue `planned`.
-Terraform y el empaquetado solo despliegan las `implemented`.
+The registry can be written before the code: a `planned` function documents the design (routes, permissions,
+events) and already appears in the tables with status "planned". When you create its handler, remove the
+`status` field (or set `implemented`); the validator warns if the file already exists and the function is still
+`planned`. Terraform and packaging only deploy `implemented` functions.
 
-## Convenciones que el validador exige
+## Conventions the validator enforces
 
-- Un módulo Maven por microservicio: `backend/<servicio>/`. Una función vive en el módulo de su servicio.
-- Los handlers están en `src/main/java/...`, y su clase acaba en `Handler` (`CreateReservationHandler`).
-  Cualquier `*Handler.java` que no esté en el registro es un error: así no se queda código sin dar de alta.
-- `name` = `<servicio>-<acción>` en kebab-case (máx. 64): `reservations-create`.
-- Una función por handler y una función por ruta (método + ruta).
+- One Maven module per microservice: `backend/<service>/`. A function lives in the module of its service.
+- Handlers are in `src/main/java/...` and their class ends in `Handler` (`CreateReservationHandler`).
+  Any `*Handler.java` that is not in the registry is an error: that is how code never goes unregistered.
+- `name` = `<service>-<action>` in kebab-case (max 64): `reservations-create`.
+- One function per handler and one function per route (method + path).
 
-## Esquema de cada función
+## Schema of each function
 
-| Campo | Obligatorio | Valor |
+| Field | Required | Value |
 |---|---|---|
-| `name` | sí | `<servicio>-<acción>`, kebab-case, único |
-| `service` | sí | microservicio dueño; coincide con el módulo de `entry` |
-| `status` | no | `planned` (diseñada, sin handler todavía) o `implemented` (por defecto). Solo `implemented` exige que exista `entry` |
-| `description` | sí | una frase; sale en las tablas del README |
-| `entry` | sí | fuente del handler, relativa a `backend/`: `<servicio>/src/main/java/<paquete>/<Clase>.java` |
-| `handler` | sí | `paquete.Clase::metodo`; debe coincidir con `entry` |
-| `trigger` | sí | ver abajo |
-| `auth` | solo HTTP | lista de `user`, `maintenance`, `admin`, o `["public"]` |
+| `name` | yes | `<service>-<action>`, kebab-case, unique |
+| `service` | yes | owning microservice; matches the module of `entry` |
+| `status` | no | `planned` (designed, no handler yet) or `implemented` (default). Only `implemented` requires `entry` to exist |
+| `description` | yes | one sentence; it appears in the README tables |
+| `entry` | yes | handler source, relative to `backend/`: `<service>/src/main/java/<package>/<Class>.java` |
+| `handler` | yes | `package.Class::method`; must match `entry` |
+| `trigger` | yes | see below |
+| `auth` | HTTP only | list of `user`, `maintenance`, `admin`, or `["public"]` |
 | `uses` | no | `[{ "kind": "dynamodb"\|"s3"\|"secret"\|"sqs"\|"cloudwatch", "name": "kebab", "access": "read"\|"write"\|"readwrite" }]` |
-| `publishes` | no | eventos de dominio que emite (PascalCase: `VehicleReserved`) |
-| `consumes` | sqs/eventbridge | eventos que trata; obligatorio con esos disparadores, prohibido en el resto |
-| `memoryMb`, `timeoutSeconds`, `reservedConcurrency` | no | enteros; si faltan, Terraform usa sus valores por defecto |
+| `publishes` | no | domain events it emits (PascalCase: `VehicleReserved`) |
+| `consumes` | sqs/eventbridge | events it handles; required with those triggers, forbidden otherwise |
+| `memoryMb`, `timeoutSeconds`, `reservedConcurrency` | no | integers; if missing, Terraform uses its defaults |
 
-Disparadores (`trigger.type`):
+Triggers (`trigger.type`):
 
-| Tipo | Campos | Para qué |
+| Type | Fields | What for |
 |---|---|---|
-| `http` | `method`, `path` | API Gateway; `path` con parámetros `{id}` |
-| `authorizer` | — | Lambda authorizer de API Gateway (valida el token una vez) |
-| `sqs` | `queue` | consumidor de una cola (la cola trae su DLQ) |
-| `eventbridge` | — | regla por los eventos de `consumes` |
-| `schedule` | `expression` | `rate(1 minute)` o `cron(...)` |
-| `dynamodb-stream` | `table` | cambios de una tabla |
-| `s3` | `bucket`, `prefix?` | objetos nuevos en el Data Lake |
+| `http` | `method`, `path` | API Gateway; `path` with parameters `{id}` |
+| `authorizer` | — | API Gateway Lambda authorizer (validates the token once) |
+| `sqs` | `queue` | consumer of a queue (the queue comes with its DLQ) |
+| `eventbridge` | — | rule on the events of `consumes` |
+| `schedule` | `expression` | `rate(1 minute)` or `cron(...)` |
+| `dynamodb-stream` | `table` | changes of a table |
+| `s3` | `bucket`, `prefix?` | new objects in the Data Lake |
 
-Un campo que no esté en estas tablas es un error (sirve para cazar erratas). Para añadir un campo nuevo,
-cámbialo a la vez en `scripts/functions.mjs` (validación y tablas), en `scripts/functions.test.mjs` y aquí.
+A field that is not in these tables is an error (it catches typos). To add a new field, change it at the same
+time in `scripts/functions.mjs` (validation and tables), in `scripts/functions.test.mjs` and here.
 
-## Ejemplo
+## Example
 
 ```json
 {
   "name": "reservations-create",
   "service": "reservations",
-  "description": "Crea una reserva sobre un recurso disponible.",
+  "description": "Creates a reservation on an available resource.",
   "entry": "reservations/src/main/java/com/urbanmove/reservations/CreateReservationHandler.java",
   "handler": "com.urbanmove.reservations.CreateReservationHandler::handleRequest",
   "trigger": { "type": "http", "method": "POST", "path": "/reservations" },
@@ -103,13 +103,13 @@ cámbialo a la vez en `scripts/functions.mjs` (validación y tablas), en `script
 }
 ```
 
-Ejemplo de función por eventos (consumidor de una cola, sin `auth`):
+An event-driven function (queue consumer, no `auth`):
 
 ```json
 {
   "name": "history-record",
   "service": "history",
-  "description": "Guarda cada evento de dominio en el historial.",
+  "description": "Stores every domain event in the history.",
   "entry": "history/src/main/java/com/urbanmove/history/RecordEventHandler.java",
   "handler": "com.urbanmove.history.RecordEventHandler::handleRequest",
   "trigger": { "type": "sqs", "queue": "history-events" },
@@ -118,12 +118,11 @@ Ejemplo de función por eventos (consumidor de una cola, sin `auth`):
 }
 ```
 
-## Reglas para el agente
+## Rules for the agent
 
-- Lee el handler antes de rellenar `uses`, `publishes` y `consumes`: deben reflejar lo que el código hace,
-  no lo que se piensa que hace. Mínimo privilegio: `read` si solo lee.
-- Los nombres de evento son los de la sección 6 del enunciado (`UserRegistered`, `RideFinished`...). Un
-  `AVISO` de "consume X pero nadie lo publica" casi siempre es una errata o una función que falta.
-- No inventes el contenido de `description`: resume lo que hace el handler.
-- Para usar el registro desde Terraform y para las limitaciones de AWS Academy, ver
-  `references/terraform.md`.
+- Read the handler before filling `uses`, `publishes` and `consumes`: they must reflect what the code does,
+  not what you think it does. Least privilege: `read` if it only reads.
+- Event names are those of section 6 of the course statement (`UserRegistered`, `RideFinished`...). A warning
+  "consumes X but no function publishes it" is almost always a typo or a missing function.
+- Do not invent the `description`: summarize what the handler does.
+- To read the registry from Terraform and for the AWS Academy limitations, see `references/terraform.md`.

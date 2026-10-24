@@ -1,69 +1,69 @@
 ---
 name: write-adr
-description: Escribe y mantiene los ADR (decisiones de arquitectura) de UrbanMove en docs/adr/, con problema, alternativas, decisión y consecuencias, como pide el enunciado (mínimo dos). Úsala cuando se tome o se cambie una decisión de arquitectura (bus de eventos, base de datos, arranque en frío de Java, entorno AWS Academy o LocalStack, estrategia anti doble reserva...), cuando el usuario pida "un ADR", o al documentar por qué algo está hecho así. Use for architecture decision records.
+description: "Writes and maintains the UrbanMove ADRs (architecture decision records) in docs/adr/, with problem, alternatives, decision and consequences, as the course statement requires (at least two). Use it when an architecture decision is taken or changed (event bus, database, Java cold start, AWS Academy vs LocalStack, double-reservation strategy...), when the user asks for an ADR, or when documenting why something is built a certain way."
 ---
 
-# ADR de UrbanMove
+# UrbanMove ADRs
 
-Un ADR es un documento **breve** que deja por escrito una decisión de arquitectura: qué problema había, qué
-opciones se miraron, cuál se eligió y qué cuesta. El enunciado exige al menos dos y los pide con esa
-estructura (*problema, alternativas, decisión y consecuencias*). En la defensa se pregunta "por qué" de cada
-pieza: el ADR es la respuesta preparada, enlazada al código real.
+An ADR is a **short** document that records an architecture decision: what the problem was, which options were
+looked at, which one was chosen and what it costs. The course statement requires at least two and asks for
+them with that structure (*problem, alternatives, decision and consequences*). In the defense every "why" is
+asked: the ADR is the prepared answer, linked to the real code. ADRs are written in English.
 
-## Cuándo escribir uno
+## When to write one
 
-Escribe un ADR si la decisión:
-- afecta a la estructura, a interfaces entre servicios o a un atributo de calidad (fallos, coste, escala), y
-- es cara de revertir, o alguien que llegue después se preguntará "¿por qué así?", y
-- tuvo alternativas reales con ventajas e inconvenientes.
+Write an ADR if the decision:
+- affects structure, interfaces between services or a quality attribute (failures, cost, scale), and
+- is expensive to reverse, or someone arriving later will ask "why like this?", and
+- had real alternatives with advantages and drawbacks.
 
-No lo escribas para estilo de código (lo cubre el linter), un detalle local de un solo handler o un apaño
-temporal. Si dudas: ¿lo defenderías en la defensa con una frase? Entonces probablemente merece un ADR.
+Do not write one for code style (the linter covers it), a local detail of a single handler or a temporary
+workaround. If in doubt: would you defend it in the defense with one sentence? Then it probably deserves an ADR.
 
-## Dónde y cómo se llama
+## Where and what it is called
 
-- Carpeta `docs/adr/`. Fichero `NNNN-verbo-en-infinitivo.md`, minúsculas con guiones, sin tildes:
-  `0001-usar-sqs-y-eventbridge-como-bus.md`. `NNNN` es el siguiente número libre (mira `docs/adr/`).
-- Índice `docs/adr/README.md`: tabla `Nº | Decisión | Estado | Fecha`. Créalo con el primer ADR y
-  actualízalo en el mismo cambio que cualquier ADR nuevo o que cambie de estado.
-- Un ADR, una decisión. Si salen dos, son dos ficheros que se enlazan.
+- Folder `docs/adr/`. File `NNNN-verb-phrase.md`, lowercase with hyphens:
+  `0001-use-sqs-and-eventbridge-as-bus.md`. `NNNN` is the next free number (look in `docs/adr/`).
+- Index `docs/adr/README.md`: table `No. | Decision | Status | Date`. Create it with the first ADR and
+  update it in the same change as any new ADR or status change.
+- One ADR, one decision. If two come out, they are two files that link to each other.
 
-## Proceso
+## Process
 
-1. **Entiende la decisión.** Si no está clara por el código, el chat o `git log`, **pregunta** al usuario qué se
-   decidió y por qué. No inventes una decisión ni un motivo: si es solo una propuesta, el estado es `Propuesta`.
-2. **Reúne evidencia real.** Abre los ficheros afectados (`infrastructure/`, `backend/functions.json`, `db/`).
-   Cada afirmación sobre el sistema debe poder comprobarse ahí; las cifras (coste, latencia, límites de AWS
-   Academy) llevan unidad y origen, o se marcan como estimación.
-3. **Copia `plantilla.md`** a `docs/adr/NNNN-...md` y rellénala. Mira `ejemplo.md` para el nivel de detalle.
-4. **Alternativas honestas.** Al menos dos, la elegida incluida, con a favor y en contra de verdad. Una
-   alternativa de paja no cuenta. Incluye "no hacer nada" si procede.
-5. **Consecuencias con inconvenientes.** Lo malo se escribe: coste, deuda, riesgos y cómo se vigilan.
-6. **Enlaza con el código.** La sección "Dónde se ve en el código" nombra ficheros reales (módulo Terraform,
-   función de `functions.json`, tabla de `db/`). La defensa pide relacionar decisión y repositorio.
-7. **Actualiza el índice** y, si el ADR cambia lo que dice algún README, ese README (skill `project-readmes`).
+1. **Understand the decision.** If it is not clear from the code, the chat or `git log`, **ask** the user what
+   was decided and why. Do not invent a decision or a reason: if it is only a proposal, the status is `Proposed`.
+2. **Gather real evidence.** Open the affected files (`infrastructure/`, `backend/functions.json`, `db/`).
+   Every claim about the system must be checkable there; figures (cost, latency, AWS Academy limits) carry a
+   unit and an origin, or are marked as estimates.
+3. **Copy `template.md`** to `docs/adr/NNNN-...md` and fill it in. See `example.md` for the level of detail.
+4. **Honest alternatives.** At least two, the chosen one included, with real pros and cons. A straw-man
+   alternative does not count. Include "do nothing" when it applies.
+5. **Consequences with drawbacks.** Write down the bad: cost, debt, risks and how they are watched.
+6. **Link to the code.** The section "Where it shows in the code" names real files (Terraform module,
+   `functions.json` function, `db/` table). The defense asks to relate decision and repository.
+7. **Update the index** and, if the ADR changes what a README says, that README (skill `project-readmes`).
 
-## Reglas
+## Rules
 
-- **Una vez `Aceptada`, no se reescribe.** Si la decisión cambia, crea un ADR nuevo, pon en el viejo
-  `Sustituida por ADR-NNNN` y enlaza ambos.
-- Presente y voz directa ("Usamos SQS delante de cada consumidor"), en español, una página como mucho.
-- Fecha: la de hoy en formato `AAAA-MM-DD`. Autoría: quienes decidieron, por nombre.
-- Sin credenciales, IDs de cuenta ni ARNs reales.
+- **Once `Accepted`, it is not rewritten.** If the decision changes, create a new ADR, set the old one to
+  `Superseded by ADR-NNNN` and link both.
+- Present tense and direct voice ("We use SQS in front of every consumer"), at most one page.
+- Date: today's, as `YYYY-MM-DD`. Authorship: who decided, by name.
+- No credentials, account IDs or real ARNs.
 
-## Candidatas para este proyecto
+## Candidates for this project
 
-Decisiones que el enunciado obliga a tomar, y que se defenderán. **Son temas, no decisiones tomadas:** pregunta
-al equipo antes de redactar.
+Decisions the statement forces and that will be defended. **They are topics, not decisions taken:** ask the
+team before writing.
 
-| Tema | Alternativas típicas | Qué toca |
+| Topic | Typical alternatives | What it touches |
 |---|---|---|
-| Bus y colas de eventos | EventBridge + SQS por consumidor, SNS + SQS, Kafka | `functions.json` (`consumes`), `infrastructure/` |
-| Dónde corre y se despliega todo | AWS Academy, AWS real, LocalStack | todo; condiciona IAM (`LabRole`) |
-| Una Lambda por ruta o por servicio | una por handler, una por microservicio | `functions.json`, empaquetado |
-| Arranque en frío de Java | SnapStart, Micronaut/GraalVM, memoria mayor | `backend/`, `memoryMb` |
-| Evitar doble reserva | escritura condicional, bloqueo, cola FIFO | `reservations-create`, `db/` |
-| Datos: tabla por servicio frente a tabla única | DynamoDB por servicio, tabla compartida | `db/`, propiedad de datos |
-| Data marts: dónde se sirven | DynamoDB, S3 + Athena | `analytics-*`, `db/` |
-| Reprocesar eventos fallidos | DLQ + redrive manual, reintentos automáticos | `analytics-replay-failed-events` |
-| Autenticación | Lambda authorizer propio, Cognito | `identity-authorize` |
+| Event bus and queues | EventBridge + SQS per consumer, SNS + SQS, Kafka | `functions.json` (`consumes`), `infrastructure/` |
+| Where everything runs and is deployed | AWS Academy, real AWS, LocalStack | everything; conditions IAM (`LabRole`) |
+| One Lambda per route or per service | one per handler, one per microservice | `functions.json`, packaging |
+| Java cold start | SnapStart, Micronaut/GraalVM, more memory | `backend/`, `memoryMb` |
+| Avoiding double reservation | conditional write, lock, FIFO queue | `reservations-create`, `db/` |
+| Data: table per service vs single table | DynamoDB per service, shared table | `db/`, data ownership |
+| Data marts: where they are served | DynamoDB, S3 + Athena | `analytics-*`, `db/` |
+| Reprocessing failed events | DLQ + manual redrive, automatic retries | `analytics-replay-failed-events` |
+| Authentication | own Lambda authorizer, Cognito | `identity-authorize` |

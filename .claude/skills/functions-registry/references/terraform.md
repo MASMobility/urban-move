@@ -1,12 +1,12 @@
-# Leer el registro desde Terraform
+# Reading the registry from Terraform
 
-Terraform no lista las Lambdas: recorre `backend/functions.json`. Añadir una función es añadir una entrada
-al registro; aparecen a la vez la Lambda, su ruta y sus permisos. Esbozo ilustrativo (ajustar al nombre real
-del jar y a los módulos que se definan en `infrastructure/`):
+Terraform does not list the Lambdas: it walks `backend/functions.json`. Adding a function is adding an entry
+to the registry; the Lambda, its route and its permissions appear together. Illustrative sketch (adjust to the
+real jar name and to the modules defined in `infrastructure/`):
 
 ```hcl
 locals {
-  # Solo lo implementado: las funciones "planned" aún no tienen jar que desplegar.
+  # Only what is implemented: "planned" functions have no jar to deploy yet.
   functions      = { for f in jsondecode(file("${path.module}/../backend/functions.json")).functions : f.name => f if try(f.status, "implemented") == "implemented" }
   http_functions = { for name, f in local.functions : name => f if f.trigger.type == "http" }
   sqs_functions  = { for name, f in local.functions : name => f if f.trigger.type == "sqs" }
@@ -21,7 +21,7 @@ resource "aws_lambda_function" "this" {
   memory_size   = try(each.value.memoryMb, 512)
   timeout       = try(each.value.timeoutSeconds, 15)
   reserved_concurrent_executions = try(each.value.reservedConcurrency, -1)
-  # filename / source_code_hash: el jar del módulo backend/<service>/
+  # filename / source_code_hash: the jar of the module backend/<service>/
 }
 
 resource "aws_apigatewayv2_route" "this" {
@@ -32,13 +32,13 @@ resource "aws_apigatewayv2_route" "this" {
 }
 ```
 
-`uses` se traduce en políticas de IAM por función (`read` → `GetItem/Query`, `write` → `PutItem/UpdateItem`,
-`readwrite` → ambas) acotadas al ARN de esa tabla o bucket. `publishes` concede `events:PutEvents` (o
-`sns:Publish`) y los disparadores `sqs` conceden el consumo de su cola.
+`uses` becomes per-function IAM policies (`read` -> `GetItem/Query`, `write` -> `PutItem/UpdateItem`,
+`readwrite` -> both) scoped to the ARN of that table or bucket. `publishes` grants `events:PutEvents` (or
+`sns:Publish`) and `sqs` triggers grant consuming their queue.
 
 ## AWS Academy
 
-El laboratorio no deja crear roles IAM: todas las funciones usan `LabRole`. El registro sigue siendo útil
-(documenta el mínimo privilegio que se aplicaría y alimenta la tabla "Permisos por función"), pero en
-Terraform hay que usar `role = data.aws_iam_role.lab.arn` en vez de crear un rol por función. Anotarlo en
-`infrastructure/README.md` como simplificación consciente, y decidirlo en un ADR si se confirma el entorno.
+The lab cannot create IAM roles: every function uses `LabRole`. The registry is still useful (it documents the
+least privilege that would be applied and feeds the "Permissions per function" table), but in Terraform you must
+use `role = data.aws_iam_role.lab.arn` instead of creating one role per function. Note it in
+`infrastructure/README.md` as a conscious simplification (see ADR-0001).

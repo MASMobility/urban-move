@@ -1,0 +1,2 @@
+# Concurrent appends to the shared memory merge without conflicts (local merge/rebase/pull).
+MEMORY.md merge=union

@@ -1,25 +1,25 @@
-# README.md (raíz)
+# README.md (root)
 
-Es la puerta de entrada: qué es el proyecto, cómo se arranca y dónde está cada cosa. No explica decisiones
-de capa (eso es de cada carpeta).
+The front door: what the project is, how to run it and where everything is. It does not explain layer
+decisions (each folder does).
 
-Secciones, en este orden (omite las que aún no apliquen):
+Sections, in this order (skip the ones that do not apply yet):
 
-1. **Título y párrafo de apertura.** Qué es UrbanMove, que es el proyecto final de Computación en la Nube
-   y que es 100 % serverless en AWS.
-2. **Mapa de carpetas** en bloque de código, una línea por carpeta (`frontend/`, `backend/`, `db/`,
-   `infrastructure/`, `docs/`), y una frase: cada carpeta tiene su README para enseñarla por separado.
-3. **Prerrequisitos** (ya existe la tabla de versiones; mantenla al día) y **Credenciales** (nunca en el repo).
-4. **Arrancar en local**: el flujo mínimo y razonable de comandos (el enunciado pide uno solo). Incluye la
-   tabla de comandos reales: instalar, arrancar, probar, empaquetar, desplegar, destruir.
-5. **Las fronteras del proyecto**: las interfaces que permiten cambiar lo que hay detrás (por ejemplo, el
-   cliente HTTP del frontend frente a un mock, o el repositorio de datos frente a una implementación en
-   memoria). Tabla `Interfaz | Separa | Hoy | Después`.
-6. **Flujos de demostración**: los cinco del enunciado (usuario, mantenimiento, analítica y recolocación,
-   dashboard, fallo controlado), cada uno con los comandos o pasos para reproducirlo.
-7. **Pipeline**: qué ejecuta CI en cada cambio (pruebas, formato, imágenes o artefactos, `functions.mjs check`).
-8. **Agentes de IA**: `AGENTS.md`, `.claude/skills/` (ya está).
-9. **Antes de enseñarlo / Pendiente**: tabla `Qué | Estado` con prioridad (🔴🟠🟡).
-10. **Reparto del trabajo**: quién hizo qué (lo pide el PDF; aquí o enlazado desde el PDF).
+1. **Title and opening paragraph.** What UrbanMove is, that it is the final project of Cloud Computing, and that
+   it is 100% serverless on AWS.
+2. **Folder map** in a code block, one line per folder (`frontend/`, `backend/`, `db/`, `infrastructure/`,
+   `docs/`), and one sentence: every folder has its own README so it can be shown on its own.
+3. **Prerequisites** (the version table already exists; keep it up to date) and **Credentials** (never in the repo).
+4. **Run locally**: the minimal, reasonable flow of commands (the statement asks for a single one). Include
+   the table of real commands: install, run, test, package, deploy, destroy.
+5. **The boundaries of the project**: the interfaces that allow swapping what is behind them (for example, the
+   frontend's HTTP client versus a mock, or the data repository versus an in-memory one).
+   Table `Interface | Separates | Today | Later`.
+6. **Demo flows**: the five of the statement (user, maintenance, analytics and relocation, dashboard,
+   controlled failure), each with the commands or steps to reproduce it.
+7. **Pipeline**: what CI runs on every change (tests, format, images or artifacts, `functions.mjs check`).
+8. **AI agents**: `AGENTS.md`, `.claude/skills/` (already there).
+9. **Before showing it / Pending**: table `What | Status` with priority.
+10. **Work split**: who did what (the PDF asks for it; here or linked from the PDF).
 
-Fuente de cada dato: `package.json`/`pom.xml`/Terraform para comandos y versiones; `git log` para el reparto.
+Source of each fact: `package.json`/`pom.xml`/Terraform for commands and versions; `git log` for the split.

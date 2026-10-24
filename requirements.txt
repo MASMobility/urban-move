@@ -1,3 +1,4 @@
-# Dependencias Python de las herramientas de agentes (skill aws-architecture-diagram)
-# Instalar: python -m pip install -r requirements.txt   (en Windows: py -m pip ...)
+# Python dependencies for the diagram skill (aws-architecture-diagram) and scripts/check_harness.py
+# Install: python -m pip install -r requirements.txt   (on Windows: py -m pip ...)
 defusedxml>=0.7.1
+PyYAML>=6.0

@@ -1,26 +1,27 @@
 # infrastructure/README.md
 
-Título: `# infrastructure — despliegue con Terraform`. Apertura: qué entorno es el objetivo (AWS Academy, AWS
-real o LocalStack, según el ADR) y por qué.
+Title: `# infrastructure — deployment with Terraform`. Opening: which environment is the target (see the ADR on
+the environment) and why.
 
-Secciones:
+Sections:
 
-1. **Módulos**: tabla `Módulo | Qué crea | Cuándo se despliega`. Separa lo que sobrevive a los redespliegues
-   (tablas, Data Lake) de lo que cambia a diario (Lambdas), y di por qué.
-2. **Antes de nada**: credenciales (`aws configure sso` o las de Academy, que caducan), estado remoto o local de
-   Terraform, variables obligatorias. Nada de valores reales.
-3. **Desplegar**: comandos reales en orden (`terraform init/plan/apply`, empaquetado previo, semillas) y qué
-   saca cada uno (URLs, nombres) en los outputs.
-4. **Cómo está montado**: árbol de la carpeta y la frase clave: «Terraform **no lista las Lambdas**: recorre
-   `backend/functions.json`; añadir una función es añadir una entrada ahí» (skill `functions-registry`).
-5. **Eventos y colas**: bus, colas, DLQ, reintentos y la política de retención.
-6. **Observabilidad**: log groups con retención, panel, alarmas (con qué métrica y por qué) y dónde se ven.
-7. **Escalado**: concurrencia reservada, paralelismo de las Lambdas de eventos, particionado del Data Lake.
-8. **Simplificaciones conscientes**: lo que en producción se haría distinto (p. ej. `LabRole` compartido en
-   Academy en vez de un rol por función, secretos, authorizer).
-9. **Recoger la mesa**: `terraform destroy` y qué tarda o se queda atrás. Debe contener lo que exige la
-   sección 17 del enunciado: **recursos creados, eliminados y activos, coste esperado y medidas para no exponer
-   credenciales**. Mantenla al día en cada despliegue real.
-10. **Pendiente**.
+1. **Modules**: table `Module | What it creates | When it is deployed`. Separate what survives redeploys (tables,
+   Data Lake) from what changes daily (Lambdas), and say why.
+2. **Before anything**: credentials (`aws configure sso` or the Academy ones, which expire), Terraform state,
+   required variables. No real values.
+3. **Deploy**: real commands in order (`terraform init/plan/apply`, prior packaging, seeds) and what each
+   prints in the outputs (URLs, names).
+4. **How it is built**: tree of the folder and the key sentence: "Terraform **does not list the Lambdas**: it
+   walks `backend/functions.json`; adding a function is adding an entry there" (skill `functions-registry`).
+5. **Events and queues**: bus, queues, DLQ, retries and the retention policy.
+6. **Observability**: log groups with retention, dashboard, alarms (with which metric and why) and where they
+   are seen.
+7. **Scaling**: reserved concurrency, parallelism of the event Lambdas, Data Lake partitioning.
+8. **Conscious simplifications**: what would be done differently in production (for example the shared
+   `LabRole` in Academy instead of one role per function).
+9. **Clean up**: `terraform destroy` and what takes long or is left behind. It must contain what section 17 of
+   the statement requires: **resources created, deleted and still active, expected cost and measures to avoid
+   exposing credentials**. Keep it up to date at every real deployment.
+10. **Pending**.
 
-Fuente: ficheros `.tf`, `terraform output`, `backend/functions.json`, ADRs de `docs/adr/`.
+Source: `.tf` files, `terraform output`, `backend/functions.json`, ADRs in `docs/adr/`.

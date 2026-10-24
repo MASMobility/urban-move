@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(terraform apply *)",
+      "Bash(terraform destroy *)",
+      "Bash(aws *)"
+    ]
+  }
+}

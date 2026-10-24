@@ -1,78 +1,80 @@
 ---
 name: project-readmes
-description: Escribe y actualiza los README de UrbanMove (raíz, backend/, db/, frontend/, infrastructure/) con el estilo del repo de referencia betta-tech/jornadas-cloud-2026: un README por carpeta que explica el porqué de cada decisión, con árbol de carpetas, tablas y secciones de decisiones y pendientes. Úsala al crear, rehacer o revisar cualquier README, o cuando un cambio de código deje un README desfasado. Use for writing or updating folder READMEs.
+description: "Writes and updates the UrbanMove READMEs (root, backend/, db/, frontend/, infrastructure/) in the style of the reference repo betta-tech/jornadas-cloud-2026: one README per folder that explains the why of each decision, with a folder tree, tables and decisions/pending sections. Use it when creating, redoing or reviewing any README, or when a code change leaves a README out of date."
 ---
 
-# README por carpeta, al estilo del repo de referencia
+# One README per folder, in the style of the reference repo
 
-El modelo es [betta-tech/jornadas-cloud-2026](https://github.com/betta-tech/jornadas-cloud-2026): cada carpeta
-tiene su README para poder enseñarla por separado, y el README explica **por qué** se hizo así, no solo cómo
-se arranca. Aquí se adapta a UrbanMove (Java + Terraform + Astro, varios microservicios, eventos y Data Lake).
+The model is [betta-tech/jornadas-cloud-2026](https://github.com/betta-tech/jornadas-cloud-2026): every folder
+has its own README so it can be shown on its own, and the README explains **why** things are done that way,
+not only how to start them. Here it is adapted to UrbanMove (Java + Terraform + Astro, several microservices,
+events and a Data Lake). READMEs are written in English.
 
-| README | Plantilla | Datos que salen de otro sitio |
+| README | Template | Data that comes from elsewhere |
 |---|---|---|
-| `README.md` (raíz) | `references/root.md` | carpetas reales y scripts reales |
-| `backend/README.md` | `references/backend.md` | **tablas generadas desde `backend/functions.json`** |
-| `db/README.md` | `references/db.md` | claves y accesos del código en `db/` |
-| `frontend/README.md` | `references/frontend.md` | rutas HTTP de `backend/functions.json` |
-| `infrastructure/README.md` | `references/infrastructure.md` | módulos y variables de Terraform |
+| `README.md` (root) | `references/root.md` | real folders and real scripts |
+| `backend/README.md` | `references/backend.md` | **tables generated from `backend/functions.json`** |
+| `db/README.md` | `references/db.md` | keys and accesses of the code in `db/` |
+| `frontend/README.md` | `references/frontend.md` | HTTP routes of `backend/functions.json` |
+| `infrastructure/README.md` | `references/infrastructure.md` | Terraform modules and variables |
 
-Abre solo la plantilla del README en el que trabajas.
+Open only the template of the README you are working on.
 
-## Proceso
+## Process
 
-1. **Lee el código antes de escribir.** Cada afirmación (comando, ruta, nombre de tabla, número de
-   funciones) sale de un fichero que has abierto. Lo que no existe todavía va a "Pendiente"; no se inventa.
-2. **Backend: el registro manda.** Antes de tocar `backend/README.md` aplica la skill `functions-registry`
-   y ejecuta `node .claude/skills/functions-registry/scripts/functions.mjs sync`. Las tablas entre
-   `<!-- functions:...:start -->` y `<!-- functions:...:end -->` no se editan a mano; escribe alrededor.
-3. **Escribe** siguiendo la plantilla y las reglas de estilo de abajo. Conserva el texto propio que ya hay:
-   edita secciones, no reescribas el fichero entero si no hace falta.
-4. **Verifica** antes de terminar:
-   - Cada ruta en `` `backticks` `` que parezca un fichero o carpeta existe.
-   - Cada comando que aparece existe (script de `package.json`, objetivo de Maven, comando de Terraform).
-   - No hay cifras fijas que dependan del código ("once funciones"): enlaza la tabla generada o cuenta con
+1. **Read the code before writing.** Every claim (command, route, table name, number of functions) comes from a
+   file you have opened. What does not exist yet goes under "Pending"; nothing is invented.
+2. **Backend: the registry rules.** Before touching `backend/README.md`, apply the `functions-registry` skill and
+   run `node .claude/skills/functions-registry/scripts/functions.mjs sync`. The tables between
+   `<!-- functions:...:start -->` and `<!-- functions:...:end -->` are not edited by hand; write around them.
+3. **Write** following the template and the style rules below. Keep the existing own text: edit sections, do not
+   rewrite the whole file unless needed.
+4. **Verify** before finishing:
+   - Every path in `` `backticks` `` that looks like a file or folder exists.
+   - Every command that appears exists (a `package.json` script, a Maven goal, a Terraform command).
+   - No fixed numbers that depend on the code ("eleven functions"): link the generated table or count with
      `functions.json`.
-   - `node .claude/skills/functions-registry/scripts/functions.mjs check` pasa.
-5. **Un dato, un hogar.** Si ya está explicado en otro README, enlázalo (`../db/README.md`) en vez de copiarlo.
+   - `node .claude/skills/functions-registry/scripts/functions.mjs check` passes.
+5. **One fact, one home.** If it is already explained in another README, link it (`../db/README.md`) instead of
+   copying it.
 
-## Estilo (lo que hace reconocible a ese repo)
+## Style (what makes that repo recognizable)
 
-- **Español, en segunda persona** ("Fíjate en...", "pide acceso el primer día"). Directo, sin relleno.
-- **Título con identidad**: `# backend — Lambdas de UrbanMove`, y un párrafo de apertura que dice qué hay y
-  qué no (por ejemplo, "sin dependencias de runtime").
-- **Árbol de carpetas** en bloque de código, con una frase por línea alineada en columna. Tras él, la regla
-  de diseño que lo justifica ("los handlers no saben de base de datos").
-- **Tablas** para todo lo enumerable: rutas, claves, métricas, módulos, patrones de acceso.
-- **El porqué, con la alternativa descartada.** Un párrafo por decisión que empieza con una frase en
-  negrita que enuncia la decisión: «**Los puntos los calcula el servidor.**» y después la razón y el coste.
-- **Secciones honestas**: `## Decisiones que conviene no deshacer`, `## Simplificaciones conscientes`
-  (lo que en producción se haría distinto), `## Lo que se dejó a medias a propósito` y `## Pendiente`.
-  Una limitación conocida va en cita (`> Limitación conocida: ...`) y señala el fichero donde está anotada.
-- **Avisos** con `>` para trampas que cuestan tiempo (tiempos de borrado, activar etiquetas de costes...).
-- **Comandos reales** en bloques `bash`, en el orden en que se ejecutan, con una línea de comentario.
-- **Cifras con unidades y origen**: coste por mes, latencia, límites. Si es estimación, dilo.
-- **Referencias exactas**: `infrastructure/modules/api/main.tf`, no "el módulo de la API".
+- **English, second person** ("Note that...", "ask for access on day one"). Direct, no filler.
+- **A title with identity**: `# backend — UrbanMove Lambdas`, and an opening paragraph that says what is there
+  and what is not (for example, "no runtime dependencies").
+- **A folder tree** in a code block, with one sentence per line aligned in a column. After it, the design rule
+  that justifies it ("handlers know nothing about the database").
+- **Tables** for everything enumerable: routes, keys, metrics, modules, access patterns.
+- **The why, with the discarded alternative.** One paragraph per decision that starts with a bold sentence
+  stating it: "**Points are computed by the server.**" followed by the reason and the cost.
+- **Honest sections**: `## Decisions not to undo`, `## Conscious simplifications` (what would be done
+  differently in production), `## What was left half-done on purpose` and `## Pending`. A known limitation goes
+  in a quote (`> Known limitation: ...`) and points to the file where it is noted.
+- **Callouts** with `>` for traps that cost time (deletion times, enabling cost tags...).
+- **Real commands** in `bash` blocks, in the order they run, with a one-line comment.
+- **Figures with units and origin**: cost per month, latency, limits. If it is an estimate, say so.
+- **Exact references**: `infrastructure/modules/api/main.tf`, not "the API module".
 
-## Qué README sirve para qué entregable del PDF
+## Which README serves which deliverable of the course statement
 
-| Entregable del enunciado | Dónde vive |
+| Deliverable | Home |
 |---|---|
-| Instrucciones de ejecución local (9) | `README.md` raíz, "Arrancar" |
-| Documentación de APIs: endpoints, métodos, códigos (5) | `backend/README.md`, tabla de rutas generada (+ contratos en `docs/`) |
-| Eventos: productor, consumidores, esquema (6) | `backend/README.md`, tabla de eventos generada (+ esquemas en `docs/`) |
-| Ciclo de vida de los recursos y quién valida cada transición (sección 5) | `backend/README.md` |
-| Propiedad de datos y data marts (7) | `db/README.md` |
-| Despliegue y reproducción de la infraestructura (10) | `infrastructure/README.md` |
-| Recursos creados, eliminados, activos, coste, credenciales (17) | `infrastructure/README.md`, "Recoger la mesa" |
-| Observabilidad: logs, métricas, alarmas, panel (12) | `backend/README.md` (qué se emite) e `infrastructure/README.md` (dónde se ve) |
-| CI/CD: pruebas, imágenes o artefactos, validaciones (11) | `README.md` raíz, sección "Pipeline" |
-| Tolerancia a fallos y escalabilidad | decisiones en el README de la capa afectada, y un ADR (`write-adr`) |
+| Local run instructions (9) | root `README.md`, "Run" |
+| API documentation: endpoints, methods, codes (5) | `backend/README.md`, generated route table (+ contracts in `docs/`) |
+| Events: producer, consumers, schema (6) | `backend/README.md`, generated event table (+ schemas in `docs/`) |
+| Resource lifecycle and who validates each transition (section 5) | `backend/README.md` |
+| Data ownership and data marts (7) | `db/README.md` |
+| Deployment and infrastructure reproduction (10) | `infrastructure/README.md` |
+| Resources created, deleted, still active, cost, credentials (17) | `infrastructure/README.md`, "Clean up" |
+| Observability: logs, metrics, alarms, dashboard (12) | `backend/README.md` (what is emitted) and `infrastructure/README.md` (where it is seen) |
+| CI/CD: tests, images or artifacts, validations (11) | root `README.md`, "Pipeline" section |
+| Fault tolerance and scalability | decisions in the README of the affected layer, and an ADR (`write-adr`) |
 
-El PDF se escribe a partir de estos README: si un dato falta aquí, falta en la entrega.
+The PDF is written from these READMEs: if a fact is missing here, it is missing in the delivery.
 
-## Límites
+## Limits
 
-- No escribas credenciales, IDs de cuenta, ARNs reales ni URLs privadas en ningún README (requisito 17).
-- No documentes lo que no esté hecho como si lo estuviera: va a "Pendiente".
-- Los diagramas están en `docs/*.drawio` (skill `aws-architecture-diagram`); el README los enlaza.
+- Do not write credentials, account IDs, real ARNs or private URLs in any README (requirement 17).
+- Do not document what is not done as if it were: it goes under "Pending".
+- Diagrams live in `docs/*.drawio` (skill `aws-architecture-diagram`); the README links them.

@@ -1,0 +1,75 @@
+{
+  // Shared OpenCode config (committed). Personal settings, MCP servers and keys go in
+  // opencode.json (git-ignored) or in ~/.config/opencode/. Never put secrets here.
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "coordinator": {
+      "description": "SDD - coordinates the full SDD workflow with planner, implementer, and reviewer, and passes context between phases",
+      "mode": "primary",
+      "prompt": "{file:./.opencode/prompts/coordinator.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "webfetch": "deny",
+        "websearch": "deny",
+        "task": {
+          "*": "deny",
+          "planner": "allow",
+          "implementer": "allow",
+          "reviewer": "allow"
+        }
+      }
+    },
+    "planner": {
+      "description": "SDD - drafts the spec, plan, and tasks for a request, without touching code",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/prompts/planner.md}",
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "specs/**": "allow"
+        },
+        "bash": "deny",
+        "webfetch": "deny",
+        "task": "deny"
+      }
+    },
+    "implementer": {
+      "description": "SDD - implements ONE task from an approved plan, with tests first",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/prompts/implementer.md}",
+      "permission": {
+        "bash": {
+          "*": "allow",
+          "terraform apply*": "ask",
+          "terraform destroy*": "ask",
+          "aws *": "ask"
+        },
+        "webfetch": "deny",
+        "task": "deny"
+      }
+    },
+    "reviewer": {
+      "description": "SDD - reviews the spec as QA (clarification) and validates implementation, without modifying anything",
+      "mode": "subagent",
+      "prompt": "{file:./.opencode/prompts/reviewer.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "ask",
+          "git diff*": "allow",
+          "git status*": "allow",
+          "git log*": "allow",
+          "./mvnw test*": "allow",
+          "mvnw.cmd test*": "allow",
+          "npm test*": "allow",
+          "terraform validate*": "allow",
+          "terraform fmt -check*": "allow",
+          "node .claude/skills/functions-registry/scripts/functions.mjs check*": "allow"
+        },
+        "webfetch": "deny",
+        "task": "deny"
+      }
+    }
+  }
+}
